@@ -1,4 +1,4 @@
-var c, gl, gPos = 1, vs, fs, run, q, qt;
+var c, gl, gPos = 0, vs, fs, run, q, qt;
 let vPosition = [
      0.0, 0.0, 0.0,
 ];
@@ -47,7 +47,7 @@ window.onload = function(){
 	c.width = 512;
 	c.height = 512;
 
-    // c.addEventListener('click', rndmLine, false);
+    c.addEventListener('click', rndmLine, false);
 
 	// WebGL コンテキストの取得
 	gl = c.getContext('webgl') || c.getContext('experimental-webgl');
@@ -142,8 +142,6 @@ window.onload = function(){
 	m.multiply(pMatrix, vMatrix, vpMatrix);
 	m.multiply(vpMatrix, mMatrix, mvpMatrix);
 
-    renderLine();
-
     function renderLine(){
 
         // canvasを初期化する色を設定する
@@ -165,11 +163,11 @@ window.onload = function(){
         // 線分
         gl.useProgram(pathPrg);
 
-        pathAttLocation = gl.getAttribLocation(pathPrg, 'position');
-        
         // VBO生成
         let vbo = create_vbo(vPosition);
-    
+
+        pathAttLocation = gl.getAttribLocation(pathPrg, 'position');
+            
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
 
         gl.enableVertexAttribArray(pathAttLocation);
