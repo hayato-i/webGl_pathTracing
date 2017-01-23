@@ -9,6 +9,7 @@ let REFLECTION = 0;
 window.onload = function(){
     // - 変数の定義 ---------------------------------------------------------------
 	let vSource, fSource, vShader, fShader;
+    let xyzVSource, xyzFSource, xyzVShader, xyzFShader;
 
 	// - keydown イベントへの関数の登録 -------------------------------------------
 	window.addEventListener('keydown', function(eve){run = eve.keyCode !== 27;}, true);
@@ -46,13 +47,49 @@ window.onload = function(){
 	c.width = 512;
 	c.height = 512;
 
-    c.addEventListener('click', rndmLine, false);
+    // c.addEventListener('click', rndmLine, false);
 
 	// WebGL コンテキストの取得
 	gl = c.getContext('webgl') || c.getContext('experimental-webgl');
 
+    // XYZ軸データ初期化
+    let xyzLine = setXYZ(1); 
 
-    /// パスを飛ばすシェーダとプログラムオブジェクトの初期化--------------------------------------------------------
+    // 原点座標空間のシェーダソースを取得--------------------------------------------
+    xyzVSource = document.getElementById('defaultXYZ_VS').textContent;
+    xyzFSource = document.getElementById('defaultXYZ_FS').textContent;
+
+    xyzVShader = create_shader(xyzVSource, gl.VERTEX_SHADER);
+    xyzFShader = create_shader(xyzFSource, gl.FRAGMENT_SHADER);
+
+    // 宣言
+    let xyzPrg;        // 原点表示用シェーダのプログラムオブジェクト
+	let xyzAttLocation // 原点表示用の attribute location
+	let xyzAttStride   // 原点表示用の attribute stride
+	let xyzUniLocation // 原点表示用の uniform location
+	let xyzVBOList     // 原点表示用の VBO のリスト
+	let xyzIBO         // 原点表示用の IBO
+
+    xyzPrg = create_program(xyzVShader, xyzFShader);
+    xyzAttLocation = [];
+    xyzAttLocation[0] = gl.getAttribLocation(xyzPrg, 'position');
+    xyzAttLocation[1] = gl.getAttribLocation(xyzPrg, 'normal');
+	xyzAttLocation[2] = gl.getAttribLocation(xyzPrg, 'color');
+
+    xyzAttStride = [];
+	xyzAttStride[0] = 3;
+	xyzAttStride[1] = 3;
+	xyzAttStride[2] = 4;
+
+    xyzUniLocation = [];
+    xyzUniLocation[0] = gl.getUniformLocation(xyzPrg, 'mvpMatrix');
+
+    xyzVBOList = [];
+    xyzVBOList[0] = create_vbo(xyzLine.p);
+    xyzVBOList[1] = create_vbo(xyzLine.n);
+	xyzVBOList[2] = create_vbo(xyzLine.c);
+
+    /// パスを飛ばすシェーダとプログラムオブジェクトの初期化----------------------------
 
     // パスのシェーダソースを取得
     vSource = document.getElementById('pathVS').textContent;
@@ -105,6 +142,8 @@ window.onload = function(){
 	m.multiply(pMatrix, vMatrix, vpMatrix);
 	m.multiply(vpMatrix, mMatrix, mvpMatrix);
 
+    renderLine();
+
     function renderLine(){
 
         // canvasを初期化する色を設定する
@@ -116,6 +155,14 @@ window.onload = function(){
 	    // canvasを初期化
 	    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+        // XYZ軸描画
+        //gl.useProgram(xyzPrg);
+
+        //set_attribute(xyzVBOList, xyzAttLocation, xyzAttStride);
+
+        //gl.drawArrays(gl.LINES, 0, xyzLine.length);
+
+        // 線分
         gl.useProgram(pathPrg);
 
         pathAttLocation = gl.getAttribLocation(pathPrg, 'position');
