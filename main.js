@@ -1,25 +1,10 @@
-var c, gl, gPos = 0, vs, fs, run, q, qt;
+var c, gl, gPos = 1, vs, fs, run, q, qt;
 let vPosition = [
      0.0, 0.0, 0.0,
 ];
 
-// マウスムーブイベントに登録する処理
-function qtnMouse(e){
-	var cw = c.width;
-	var ch = c.height;
-	var wh = 1 / Math.sqrt(cw * cw + ch * ch);
-	var x = e.clientX - c.offsetLeft - cw * 0.5;
-	var y = e.clientY - c.offsetTop - ch * 0.5;
-	var sq = Math.sqrt(x * x + y * y);
-	var r = sq * 2.0 * Math.PI * wh;
-	if(sq != 1){
-		sq = 1 / sq;
-		x *= sq;
-		y *= sq;
-	}
-	q.rotate(r, [y, x, 0.0], qt);
-}
-
+const MAX_REFLECTION = 4;
+let REFLECTION = 0;
 
 window.onload = function(){
     // - 変数の定義 ---------------------------------------------------------------
@@ -27,6 +12,31 @@ window.onload = function(){
 
 	// - keydown イベントへの関数の登録 -------------------------------------------
 	window.addEventListener('keydown', function(eve){run = eve.keyCode !== 27;}, true);
+    
+    window.addEventListener('keydown', function(eve){
+        if(eve.keyCode === 87){ // W
+
+        }
+    } ,false);
+
+    window.addEventListener('keydown', function(eve){
+        if(eve.keyCode === 83){ // S
+
+        }
+    } ,false);
+
+    window.addEventListener('keydown', function(eve){
+        if(eve.keyCode === 65){ // A
+
+        }
+    } ,false);
+
+    window.addEventListener('keydown', function(eve){
+        if(eve.keyCode === 67){ // D
+
+        }
+    } ,false);
+
 
 	// - canvas と WebGL コンテキストの初期化 -------------------------------------
 	// canvasエレメントを取得
@@ -40,7 +50,8 @@ window.onload = function(){
 
 	// WebGL コンテキストの取得
 	gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-    
+
+
     /// パスを飛ばすシェーダとプログラムオブジェクトの初期化--------------------------------------------------------
 
     // パスのシェーダソースを取得
@@ -94,9 +105,6 @@ window.onload = function(){
 	m.multiply(pMatrix, vMatrix, vpMatrix);
 	m.multiply(vpMatrix, mMatrix, mvpMatrix);
 
-    // VBOの生成からやり直さなければならない？
-
-
     function renderLine(){
 
         // canvasを初期化する色を設定する
@@ -130,16 +138,16 @@ window.onload = function(){
 
 	    // - レンダリング -------------------------------------------------------------
 	    // モデルの描画
-	    gl.drawArrays(gl.LINES, 0, gPos);
+	    gl.drawArrays(gl.LINE_STRIP, 0, gPos);
 
 	    // コンテキストの再描画
 	    gl.flush();
     }
 
     function rndmLine(){
-        let rndm = Math.random();
-        let rndmX = Math.sin(rndm);
-        let rndmY = Math.cos(rndm);
+        let rndm1 = Math.random() * 360 * 2 - 360;
+        let rndmX = Math.sin(rndm1);
+        let rndmY = Math.cos(rndm1);
         vPosition.push(rndmX);
         vPosition.push(rndmY);
         vPosition.push(0);
