@@ -1,5 +1,7 @@
-var c, gl, vs, fs, run, q, qt;
-var textures = [];
+var c, gl, gPos = 0, vs, fs, run, q, qt;
+let vPosition = [
+     0.0, 0.0, 0.0,
+];
 
 // マウスムーブイベントに登録する処理
 function qtnMouse(e){
@@ -18,9 +20,10 @@ function qtnMouse(e){
 	q.rotate(r, [y, x, 0.0], qt);
 }
 
+
 window.onload = function(){
     // - 変数の定義 ---------------------------------------------------------------
-	var vSource, fSource, vShader, fShader;
+	let vSource, fSource, vShader, fShader;
 
 	// - keydown イベントへの関数の登録 -------------------------------------------
 	window.addEventListener('keydown', function(eve){run = eve.keyCode !== 27;}, true);
@@ -33,24 +36,118 @@ window.onload = function(){
 	c.width = 512;
 	c.height = 512;
 
-	// canvas のマウスムーブイベントに処理を登録
-	c.addEventListener('mousemove', qtnMouse, true);
+    c.addEventListener('click', rndmLine, false);
 
 	// WebGL コンテキストの取得
 	gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-
-
-	// - クォータニオン初期化 -----------------------------------------------------
-	q = new qtnIV();
-	qt = q.identity(q.create());
     
+    /// パスを飛ばすシェーダとプログラムオブジェクトの初期化--------------------------------------------------------
 
-    // 三次元空間と、移動する自分を描画するプログラム
+    // パスのシェーダソースを取得
+    vSource = document.getElementById('pathVS').textContent;
+    fSource = document.getElementById('pathFS').textContent;
+    
+    // 頂点シェーダとフラグメントシェーダの生成
+    vShader = create_shader(vSource, gl.VERTEX_SHADER);
+    fShader = create_shader(fSource, gl.FRAGMENT_SHADER);
+
+    // プログラムオブジェクトの生成とリンク
+    pathPrg = create_program(vShader, fShader);
+  
+    // パス描画用
+    pathAttStride = 3;
+
+    // - 行列の初期化 -------------------------------------------------------------
+    // minMatrix.js を用いた行列関連処理
+	// matIVオブジェクトを生成
+	var m = new matIV();
+
+	// 各種行列の生成と初期化
+	var mMatrix = m.identity(m.create());
+	var vMatrix = m.identity(m.create());
+	var pMatrix = m.identity(m.create());
+	var vpMatrix = m.identity(m.create());
+	var mvpMatrix = m.identity(m.create());
+
+    // - レンダリングのための WebGL 初期化設定 ------------------------------------
+	// ビューポートを設定する
+	gl.viewport(0, 0, c.width, c.height);
+
+    // canvasを初期化する色を設定する
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+	// canvasを初期化する際の深度を設定する
+	gl.clearDepth(1.0);
+
+	// canvasを初期化
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
-    // パスを飛ばすプログラム
+	// - 行列の計算 ---------------------------------------------------------------
+	// ビュー座標変換行列
+	m.lookAt([0.0, 0.0, 3.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], vMatrix);
 
+	// プロジェクション座標変換行列
+	m.perspective(45, c.width / c.height, 0.1, 10.0, pMatrix);
+
+	// 各行列を掛け合わせ座標変換行列を完成させる
+	m.multiply(pMatrix, vMatrix, vpMatrix);
+	m.multiply(vpMatrix, mMatrix, mvpMatrix);
+
+    // VBOの生成からやり直さなければならない？
+
+
+    function renderLine(){
+
+        // canvasを初期化する色を設定する
+    	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+	    // canvasを初期化する際の深度を設定する
+	    gl.clearDepth(1.0);
+
+	    // canvasを初期化
+	    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.useProgram(pathPrg);
+
+        pathAttLocation = gl.getAttribLocation(pathPrg, 'position');
+        
+        // VBO生成
+        let vbo = create_vbo(vPosition);
+    
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+
+        gl.enableVertexAttribArray(pathAttLocation);
+
+        gl.vertexAttribPointer(pathAttLocation, pathAttStride, gl.FLOAT, false, 0, 0);
+
+	    // - uniform 関連の初期化と登録 -----------------------------------------------
+	    // uniformLocationの取得
+	    var uniLocation = gl.getUniformLocation(pathPrg, 'mvpMatrix');
+
+	    // uniformLocationへ座標変換行列を登録
+	    gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+
+	    // - レンダリング -------------------------------------------------------------
+	    // モデルの描画
+	    gl.drawArrays(gl.LINES, 0, gPos);
+
+	    // コンテキストの再描画
+	    gl.flush();
+    }
+
+    function rndmLine(){
+        let rndm = Math.random();
+        let rndmX = Math.sin(rndm);
+        let rndmY = Math.cos(rndm);
+        vPosition.push(rndmX);
+        vPosition.push(rndmY);
+        vPosition.push(0);
+        gPos++;
+        renderLine();
+    }
 };
+
 
 
 
