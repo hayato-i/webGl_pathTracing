@@ -5,7 +5,7 @@ let vPosition = [
 
 const MAX_REFLECTION = 4;
 const PATH_NUMBER = 4;
-let reflection = 0;
+let reflection = 1;
 
 window.onload = function(){
     // - 変数の定義 ---------------------------------------------------------------
@@ -74,10 +74,9 @@ window.onload = function(){
 	let pathTrace = new PathTracing(PATH_NUMBER, MAX_REFLECTION);
 
 	// 初期化
-	pathTrace.init();
-	pathTrace.initPath;
-	pathTrace.initPath;
-	pathTrace.initPath;
+	pathTrace.initPath();
+
+	//console.log(pathTrace.position);
     
 	// プログラムオブジェクトの生成とリンク
     let pathPrg;
@@ -85,6 +84,7 @@ window.onload = function(){
 	let pathAttStride;
 	let pathUniLocation;
 	let pathVBOList;
+	let pathIBO;
 
 	pathPrg = create_program(vShader, fShader);
 	
@@ -99,7 +99,6 @@ window.onload = function(){
 
 	set_attribute(pathVBOList, pathAttLocation, pathAttStride);
 
-	
 	pathUniLocation = [];
 	pathUniLocation[0] = gl.getUniformLocation(pathPrg, 'mvpMatrix');
 
@@ -140,31 +139,35 @@ window.onload = function(){
 	m.multiply(pMatrix, vMatrix, vpMatrix);
 	m.multiply(vpMatrix, mMatrix, mvpMatrix);	
 
-	console.log("OK");
+	// uniformLocationへ座標変換行列を登録
+	gl.uniformMatrix4fv(pathUniLocation[0], false, mvpMatrix);
+	
+	gl.flush();
 
 	function draw(){
-
+		
 		// canvasを初期化
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-		
-		gl.useProgram(pathPrg);
-
-		// uniformLocationへ座標変換行列を登録
-		gl.uniformMatrix4fv(pathUniLocation[0], false, mvpMatrix);
-
+	
 		// reflection : 反射回数(描画回数)
 		// j : パス本数
-		for(let j = 0; j<PATH_NUMBER; j++){
-			let k = (3 * j) * MAX_REFLECTION;
+		// k : パス1本に対するStride
+		for(let j = 0; j < PATH_NUMBER; j++){
+			let k =  j * 3 * MAX_REFLECTION; // 各パスのオフセット
 			gl.drawArrays(gl.LINES, k, reflection);
+			console.log("I'm path index" + j + "!");
+			console.log(reflection);
 		}
 
 		gl.flush();
+		reflection++;
 	}
+	
 
 	function stepLine(){
-		draw();
-		reflection++;
+		if(reflection !== MAX_REFLECTION){
+			draw();
+		}
 	}
 
 };
@@ -179,9 +182,14 @@ class PathTracing {
     *************************************************************************/
 	constructor(number, reflection){
 		this.position = [];
-		//this.uvcXYZ = [];
-		this.number = number;
 		this.reflection = reflection;
+		this.number = number;
+		for(let i = 0; i < this.number;i++){
+			this.position[i*this.reflection] = 0.0;
+			this.position[i*this.reflection+1] = 0.0;
+			this.position[i*this.reflection+2] = 0.0;
+		}
+		//this.uvcXYZ = [];
 	}
 
 	/* 
@@ -191,22 +199,22 @@ class PathTracing {
 
 	/* 本数分初期化 */
 	/* テスト段階のため単位円上を描画する線を描くメソッドとする*/
-	init(){
-		for(let i = 0; i < this.number; i++){
-			this.position.push(0.0, 0.0, 0.0);
-		}
-	}
 
-	static initPath(){
+	initPath(){
 		for(let i = 0; i < this.number; i++){
-			//let rndm1 = Math.random() * 180 * 2 - 180;
-			let rndm2 = Math.random() * 360 * 2 - 360;
-			let rndmX = Math.sin(rndm2);// + Math.cos(rndm2);
-			let rndmY = Math.cos(rndm2);// + Math.sin(rndm2);
-			let rndmZ = 0.0				// Math.cos(rndm2);
+			for(let j = 0; j <this.reflection-1;j++){
+				//let rndm1 = Math.random() * 180 * 2 - 180;
+				let rndm2 = Math.random() * 360 * 2 - 360;
+				let rndmX = Math.sin(rndm2);// + Math.cos(rndm2);
+				let rndmY = Math.cos(rndm2);// + Math.sin(rndm2);
+				let rndmZ = 0.0				// Math.cos(rndm2);
 
-			//this.uvcXYZ.push(rndmX, rndmY, rndmZ);
-			this.position.push(rndmX, rndmY, rndmZ);
+				let k = 3 + i * j;
+
+				this.position[3+k] = rndmX;
+				this.position[3+k+1] = rndmY;
+				this.position[3+k+2] = rndmZ;
+			}
 		}
 	}
 	/*
