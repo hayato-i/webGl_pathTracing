@@ -1,43 +1,20 @@
 var c, gl, gPos = 0, vs, fs, run, q, qt;
 let vPosition = [
-     0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0
 ];
 
 const MAX_REFLECTION = 4;
-let REFLECTION = 0;
+const PATH_NUMBER = 4;
+let reflection = 0;
 
 window.onload = function(){
     // - 変数の定義 ---------------------------------------------------------------
 	let vSource, fSource, vShader, fShader;
     let xyzVSource, xyzFSource, xyzVShader, xyzFShader;
 
-	// - keydown イベントへの関数の登録 -------------------------------------------
-	window.addEventListener('keydown', function(eve){run = eve.keyCode !== 27;}, true);
-    
-    window.addEventListener('keydown', function(eve){
-        if(eve.keyCode === 87){ // W
-
-        }
-    } ,false);
-
-    window.addEventListener('keydown', function(eve){
-        if(eve.keyCode === 83){ // S
-
-        }
-    } ,false);
-
-    window.addEventListener('keydown', function(eve){
-        if(eve.keyCode === 65){ // A
-
-        }
-    } ,false);
-
-    window.addEventListener('keydown', function(eve){
-        if(eve.keyCode === 67){ // D
-
-        }
-    } ,false);
-
+	// 飛ばす線分の数だけVBOを呼び出し、描画を繰り返す必要がある。
+	// 線分はLINE STRIPでは描かないこと　ひとつ前の座標を保持できるようにする。
+	// 合わせてINDEXを検討すること
 
 	// - canvas と WebGL コンテキストの初期化 -------------------------------------
 	// canvasエレメントを取得
@@ -47,11 +24,12 @@ window.onload = function(){
 	c.width = 512;
 	c.height = 512;
 
-    c.addEventListener('click', rndmLine, false);
+    c.addEventListener('click', stepLine, false);
 
 	// WebGL コンテキストの取得
 	gl = c.getContext('webgl') || c.getContext('experimental-webgl');
 
+	/*
     // XYZ軸データ初期化
     let xyzLine = setXYZ(1); 
 
@@ -68,28 +46,21 @@ window.onload = function(){
 	let xyzAttStride   // 原点表示用の attribute stride
 	let xyzUniLocation // 原点表示用の uniform location
 	let xyzVBOList     // 原点表示用の VBO のリスト
-	let xyzIBO         // 原点表示用の IBO
 
     xyzPrg = create_program(xyzVShader, xyzFShader);
     xyzAttLocation = [];
     xyzAttLocation[0] = gl.getAttribLocation(xyzPrg, 'position');
-    xyzAttLocation[1] = gl.getAttribLocation(xyzPrg, 'normal');
-	xyzAttLocation[2] = gl.getAttribLocation(xyzPrg, 'color');
 
     xyzAttStride = [];
 	xyzAttStride[0] = 3;
-	xyzAttStride[1] = 3;
-	xyzAttStride[2] = 4;
-
-    xyzUniLocation = [];
-    xyzUniLocation[0] = gl.getUniformLocation(xyzPrg, 'mvpMatrix');
 
     xyzVBOList = [];
     xyzVBOList[0] = create_vbo(xyzLine.p);
-    xyzVBOList[1] = create_vbo(xyzLine.n);
-	xyzVBOList[2] = create_vbo(xyzLine.c);
+    
+	set_attribute(xyzVBOList, xyzAttLocation, xyzAttStride);
+	*/
 
-    /// パスを飛ばすシェーダとプログラムオブジェクトの初期化----------------------------
+	/// パスを飛ばすシェーダとプログラムオブジェクトの初期化----------------------------
 
     // パスのシェーダソースを取得
     vSource = document.getElementById('pathVS').textContent;
@@ -99,11 +70,38 @@ window.onload = function(){
     vShader = create_shader(vSource, gl.VERTEX_SHADER);
     fShader = create_shader(fSource, gl.FRAGMENT_SHADER);
 
-    // プログラムオブジェクトの生成とリンク
-    pathPrg = create_program(vShader, fShader);
-  
-    // パス描画用
-    pathAttStride = 3;
+	// クラス生成
+	let pathTrace = new PathTracing(PATH_NUMBER, MAX_REFLECTION);
+
+	// 初期化
+	pathTrace.init();
+	pathTrace.initPath;
+	pathTrace.initPath;
+	pathTrace.initPath;
+    
+	// プログラムオブジェクトの生成とリンク
+    let pathPrg;
+	let pathAttLocation;
+	let pathAttStride;
+	let pathUniLocation;
+	let pathVBOList;
+
+	pathPrg = create_program(vShader, fShader);
+	
+	pathAttLocation = [];
+	pathAttLocation[0] = gl.getAttribLocation(pathPrg, 'position');
+	
+	pathAttStride = [];
+	pathAttStride[0] = 3;
+	
+	pathVBOList = [];
+	pathVBOList[0] = create_vbo(pathTrace.position);
+
+	set_attribute(pathVBOList, pathAttLocation, pathAttStride);
+
+	
+	pathUniLocation = [];
+	pathUniLocation[0] = gl.getUniformLocation(pathPrg, 'mvpMatrix');
 
     // - 行列の初期化 -------------------------------------------------------------
     // minMatrix.js を用いた行列関連処理
@@ -140,66 +138,94 @@ window.onload = function(){
 
 	// 各行列を掛け合わせ座標変換行列を完成させる
 	m.multiply(pMatrix, vMatrix, vpMatrix);
-	m.multiply(vpMatrix, mMatrix, mvpMatrix);
+	m.multiply(vpMatrix, mMatrix, mvpMatrix);	
 
-    function renderLine(){
+	console.log("OK");
 
-        // canvasを初期化する色を設定する
-    	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	function draw(){
 
-	    // canvasを初期化する際の深度を設定する
-	    gl.clearDepth(1.0);
+		// canvasを初期化
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		
+		gl.useProgram(pathPrg);
 
-	    // canvasを初期化
-	    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		// uniformLocationへ座標変換行列を登録
+		gl.uniformMatrix4fv(pathUniLocation[0], false, mvpMatrix);
 
-        // XYZ軸描画
-        //gl.useProgram(xyzPrg);
+		// reflection : 反射回数(描画回数)
+		// j : パス本数
+		for(let j = 0; j<PATH_NUMBER; j++){
+			let k = (3 * j) * MAX_REFLECTION;
+			gl.drawArrays(gl.LINES, k, reflection);
+		}
 
-        //set_attribute(xyzVBOList, xyzAttLocation, xyzAttStride);
+		gl.flush();
+	}
 
-        //gl.drawArrays(gl.LINES, 0, xyzLine.length);
+	function stepLine(){
+		draw();
+		reflection++;
+	}
 
-        // 線分
-        gl.useProgram(pathPrg);
-
-        // VBO生成
-        let vbo = create_vbo(vPosition);
-
-        pathAttLocation = gl.getAttribLocation(pathPrg, 'position');
-            
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-
-        gl.enableVertexAttribArray(pathAttLocation);
-
-        gl.vertexAttribPointer(pathAttLocation, pathAttStride, gl.FLOAT, false, 0, 0);
-
-	    // - uniform 関連の初期化と登録 -----------------------------------------------
-	    // uniformLocationの取得
-	    var uniLocation = gl.getUniformLocation(pathPrg, 'mvpMatrix');
-
-	    // uniformLocationへ座標変換行列を登録
-	    gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-
-	    // - レンダリング -------------------------------------------------------------
-	    // モデルの描画
-	    gl.drawArrays(gl.LINE_STRIP, 0, gPos);
-
-	    // コンテキストの再描画
-	    gl.flush();
-    }
-
-    function rndmLine(){
-        let rndm1 = Math.random() * 360 * 2 - 360;
-        let rndmX = Math.sin(rndm1);
-        let rndmY = Math.cos(rndm1);
-        vPosition.push(rndmX);
-        vPosition.push(rndmY);
-        vPosition.push(0);
-        gPos++;
-        renderLine();
-    }
 };
+
+
+
+class PathTracing {
+	/************************************************************************* 
+    * 描画用線分を管理するクラス                                               *
+    * @param {number} number パスの本数（indexに使う）                        *
+    * @param {number} reflection パスの反射回数(指定された回数反射するとDEAD)   *
+    *************************************************************************/
+	constructor(number, reflection){
+		this.position = [];
+		//this.uvcXYZ = [];
+		this.number = number;
+		this.reflection = reflection;
+	}
+
+	/* 
+	position[vec3[number]] has first position.
+	position[vec3[number*reflection]] has final position.
+	*/
+
+	/* 本数分初期化 */
+	/* テスト段階のため単位円上を描画する線を描くメソッドとする*/
+	init(){
+		for(let i = 0; i < this.number; i++){
+			this.position.push(0.0, 0.0, 0.0);
+		}
+	}
+
+	static initPath(){
+		for(let i = 0; i < this.number; i++){
+			//let rndm1 = Math.random() * 180 * 2 - 180;
+			let rndm2 = Math.random() * 360 * 2 - 360;
+			let rndmX = Math.sin(rndm2);// + Math.cos(rndm2);
+			let rndmY = Math.cos(rndm2);// + Math.sin(rndm2);
+			let rndmZ = 0.0				// Math.cos(rndm2);
+
+			//this.uvcXYZ.push(rndmX, rndmY, rndmZ);
+			this.position.push(rndmX, rndmY, rndmZ);
+		}
+	}
+	/*
+	setPath(){
+		// 前回座標の退避
+		let px = this.position[number*3];
+		let py = this.position[number*3+1];
+		let pz = this.position[number*3+2];
+	}
+
+	getUnitVector(){
+		let ux = this.position[number*3];
+		let uy = this.position[number*3+1];
+		let uz = this.position[number*3+2];
+
+		this.uvcXYZ.push(ux, uy, uz);
+	}
+	*/
+}
 
 
 
