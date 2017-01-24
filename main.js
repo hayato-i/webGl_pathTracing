@@ -74,9 +74,9 @@ window.onload = function(){
 	let pathTrace = new PathTracing(PATH_NUMBER, MAX_REFLECTION);
 
 	// 初期化
-	pathTrace.initPath();
+	pathTrace.init();
 
-	//console.log(pathTrace.position);
+	// console.log(pathTrace.position);
     
 	// プログラムオブジェクトの生成とリンク
     let pathPrg;
@@ -153,11 +153,10 @@ window.onload = function(){
 		// j : パス本数
 		// k : パス1本に対するStride
 		for(let j = 0; j < PATH_NUMBER; j++){
-			let k =  j * 3 * MAX_REFLECTION; // 各パスのオフセット
-			gl.drawArrays(gl.LINES, k, reflection);
-			console.log("I'm path index" + j + "!");
-			console.log(reflection);
+			let k =  j  * MAX_REFLECTION; // 各パスのオフセット
+			gl.drawArrays(gl.LINES, pathTrace.index[k], reflection);
 		}
+		console.log(reflection);
 
 		gl.flush();
 		reflection++;
@@ -182,14 +181,9 @@ class PathTracing {
     *************************************************************************/
 	constructor(number, reflection){
 		this.position = [];
+		this.index = [];
 		this.reflection = reflection;
 		this.number = number;
-		for(let i = 0; i < this.number;i++){
-			this.position[i*this.reflection] = 0.0;
-			this.position[i*this.reflection+1] = 0.0;
-			this.position[i*this.reflection+2] = 0.0;
-		}
-		//this.uvcXYZ = [];
 	}
 
 	/* 
@@ -200,23 +194,35 @@ class PathTracing {
 	/* 本数分初期化 */
 	/* テスト段階のため単位円上を描画する線を描くメソッドとする*/
 
-	initPath(){
-		for(let i = 0; i < this.number; i++){
-			for(let j = 0; j <this.reflection-1;j++){
+	init(){
+		for(let j = 0; j < this.number;j++){
+			for(let i = 0; i < this.reflection; i++){
 				//let rndm1 = Math.random() * 180 * 2 - 180;
 				let rndm2 = Math.random() * 360 * 2 - 360;
 				let rndmX = Math.sin(rndm2);// + Math.cos(rndm2);
 				let rndmY = Math.cos(rndm2);// + Math.sin(rndm2);
 				let rndmZ = 0.0				// Math.cos(rndm2);
 
-				let k = 3 + i * j;
+				let k = (i*3) + (j * this.reflection * 3);
 
-				this.position[3+k] = rndmX;
-				this.position[3+k+1] = rndmY;
-				this.position[3+k+2] = rndmZ;
+				this.position.splice(k, 0, rndmX, rndmY, rndmZ);
+			}
+		}
+		
+		
+		for(let i = 0; i < this.number; i++){
+			let j = i * 3 * this.reflection;
+			this.position.splice(j, 3, 0.0, 0.0, 0.0);
+		}
+
+		for(let i = 0; i < this.number; i ++){
+			for(let j = 0; j <this.reflection; j++){
+				let k = i + j;
+				this.index.splice(k, 0, j);
 			}
 		}
 	}
+
 	/*
 	setPath(){
 		// 前回座標の退避
